@@ -1,4 +1,4 @@
-Canvas / OffscreenCanvas 绘制样式指令文档
+﻿Canvas / OffscreenCanvas 绘制样式指令文档
 ==========================================
 
 说明
@@ -14,11 +14,13 @@ Canvas / OffscreenCanvas 绘制样式指令文档
 ----------
 <func>:<param>
 <func>:<param1>|<param2>|...
+<func>
 
 说明：
 - 每次调用 setString("@draw", "<func>:...") 执行一条指令。
 - func 统一小写。
-- 无参数指令写成 save:、restore:。
+- 无参数指令 save、restore、reset 的冒号可省略：save 与 save: 等价。
+- 带参数的指令必须保留冒号，如 linewidth:4。
 - setlinedash 和 fontface 是使用 | 分隔参数的样式指令。
 
 
@@ -44,21 +46,27 @@ Canvas / OffscreenCanvas 绘制样式指令文档
 
 三、状态管理
 ------------
-指令：save:
-参数：无
+指令：save
+参数：无（冒号可省略）
 作用：保存当前样式状态
-示例：save:
+示例：
+  save:
+  save
 
-指令：restore:
-参数：无
+指令：restore
+参数：无（冒号可省略）
 作用：恢复最近保存的样式状态
-示例：restore:
+示例：
+  restore:
+  restore
 
-指令：reset:
-参数：无
+指令：reset
+参数：无（冒号可省略）
 作用：将当前 2D 渲染上下文重置为默认状态，包括样式、变换、裁剪区域等；无返回值。
 说明：会清空当前上下文状态，建议谨慎使用。
-示例：reset:
+示例：
+  reset:
+  reset
 
 
 四、填充与描边样式
@@ -426,7 +434,7 @@ restore:
 
 十二、解析与校验建议
 --------------------
-1. 按每条命令解析，先找第一个 : 分割 func 和参数串。
+1. 按每条命令解析，先找第一个 : 分割 func 和参数串；找不到 : 时整串（去首尾空白、转小写）即 func，参数为空——零参数指令可省略冒号。
 2. func 统一转小写后匹配指令。
 3. 除 setlinedash 和 fontface 外，不要按 | 分割参数。
 4. setlinedash 按 | 分割；空参数表示清除虚线；非空时每个数字必须为非负数。

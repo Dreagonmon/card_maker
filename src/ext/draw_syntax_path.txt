@@ -1,4 +1,4 @@
-Canvas / OffscreenCanvas 路径绘制指令文档
+﻿Canvas / OffscreenCanvas 路径绘制指令文档
 ==========================================
 
 说明
@@ -17,11 +17,14 @@ Canvas / OffscreenCanvas 路径绘制指令文档
 ----------
 <func>:<param1>|<param2>|...|<paramn>
 <func>:
+<func>
 
 说明：
 - 每次调用 setString("@draw", "<func>:...") 执行一条指令。
 - func 统一小写。
-- 无参数指令写成 beginpath:、closepath:、stroke:。
+- 无参数指令的冒号可省略：beginpath、closepath、stroke 与 beginpath:、closepath:、stroke: 等价。
+- fill、clip 不带 fillRule 时同样可省略冒号：fill、clip 等价于 fill:、clip:（默认 nonzero）。
+- 带参数的指令必须保留冒号，如 moveto:10|20。
 - 多参数指令使用 | 分隔参数。
 - 不支持 | 转义；需要包含 | 的字符串只能通过 ${var} 传入，且不会重新分割参数。
 
@@ -45,15 +48,19 @@ Canvas / OffscreenCanvas 路径绘制指令文档
 
 三、路径构建指令
 ----------------
-指令：beginpath:
-参数：无
+指令：beginpath
+参数：无（冒号可省略）
 作用：开始一条新路径
-示例：beginpath:
+示例：
+  beginpath:
+  beginpath
 
-指令：closepath:
-参数：无
+指令：closepath
+参数：无（冒号可省略）
 作用：闭合当前子路径
-示例：closepath:
+示例：
+  closepath:
+  closepath
 
 指令：moveto:<x>|<y>
 参数：x, y
@@ -147,10 +154,12 @@ Canvas / OffscreenCanvas 路径绘制指令文档
 
 四、路径绘制与裁剪指令
 ----------------------
-指令：fill:
-参数：无
+指令：fill
+参数：无（冒号可省略）
 作用：按默认 nonzero 规则填充当前路径
-示例：fill:
+示例：
+  fill:
+  fill
 
 指令：fill:<fillRule>
 参数：fillRule
@@ -160,15 +169,19 @@ Canvas / OffscreenCanvas 路径绘制指令文档
   fill:nonzero
   fill:evenodd
 
-指令：stroke:
-参数：无
+指令：stroke
+参数：无（冒号可省略）
 作用：描边当前路径
-示例：stroke:
+示例：
+  stroke:
+  stroke
 
-指令：clip:
-参数：无
+指令：clip
+参数：无（冒号可省略）
 作用：按默认 nonzero 规则裁剪到当前路径
-示例：clip:
+示例：
+  clip:
+  clip
 
 指令：clip:<fillRule>
 参数：fillRule
@@ -182,10 +195,11 @@ Canvas / OffscreenCanvas 路径绘制指令文档
 五、参数分割规则
 ----------------
 1. beginpath、closepath、stroke：
-   无参数，写成 func:。
+   无参数，写成 func: 或 func（冒号可省略）。
 
 2. fill、clip：
    可选单参数 fillRule；省略时默认 nonzero。
+   无参数时可写成 func: 或 func（冒号可省略）。
    不按 | 分割，不允许多个参数。
    变量替换后整体校验是否为 nonzero / evenodd。
 
@@ -292,9 +306,9 @@ fill:
 
 八、解析与校验建议
 ------------------
-1. 按每条命令解析，先找第一个 : 分割 func 和参数串。
+1. 按每条命令解析，先找第一个 : 分割 func 和参数串；找不到 : 时整串（去首尾空白、转小写）即 func，参数为空——零参数指令可省略冒号。
 2. func 统一转小写后匹配指令。
-3. beginpath、closepath、stroke 必须无参数。
+3. beginpath、closepath、stroke 必须无参数（带参数时报错，无论是否写冒号）。
 4. fill、clip 最多一个参数，且替换变量后必须为 nonzero / evenodd。
 5. 除 roundrect 外，按 | 分割参数；参数个数必须匹配。
 6. roundrect 按 | 分割全部参数，参数总数必须为 5、6 或 8 个；前 4 个为 x、y、w、h，剩余为 radii。
