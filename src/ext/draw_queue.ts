@@ -7,10 +7,10 @@ interface ParsedCommand {
     rest: string;
 }
 
-/** 拆分指令为 { func, rest }；func 统一小写。 */
+/** 拆分指令为 { func, rest }；func 统一小写。无 ":" 时整串为指令名、参数为空（零参数指令可省略冒号）。 */
 const parseDrawCommand = (cmd: string): ParsedCommand => {
     const i = cmd.indexOf(":");
-    if (i < 0) throw new Error(`非法指令（缺少 ":"）: ${cmd}`);
+    if (i < 0) return { func: cmd.trim().toLowerCase(), rest: "" };
     return { func: cmd.slice(0, i).trim().toLowerCase(), rest: cmd.slice(i + 1).trim() };
 };
 
