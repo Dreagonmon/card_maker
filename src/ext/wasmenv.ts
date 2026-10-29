@@ -261,7 +261,10 @@ export class WASMEnv extends EventTarget {
         const importsMemory = WebAssembly.Module.imports(this.wasmModule)
             .some(i => i.module === "env" && i.name === "memory" && i.kind === "memory");
         if (importsMemory)
-            this.providedMemmory = new WebAssembly.Memory({ initial: 64, maximum: 64 }); // 4mb
+            // max must be generous: a module that IMPORTS this memory grows it
+            // via memory.grow, and hitting our maximum makes walloc trap
+            // (unreachable in allocate_large_object). 16MB.
+            this.providedMemmory = new WebAssembly.Memory({ initial: 64, maximum: 256 }); // 4mb init
         this.wasmInstance = await WebAssembly.instantiate(this.wasmModule, {
             env: {
                 ...(this.providedMemmory ? { memory: this.providedMemmory } : {}),
