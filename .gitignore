@@ -12,3 +12,4 @@ env.sh
 **/*.db-wal
 **/*.env
 src/ext/*.wasm
+*_TODO.md

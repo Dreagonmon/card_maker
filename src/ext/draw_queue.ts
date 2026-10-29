@@ -680,7 +680,8 @@ export class DrawingQueue {
         const data = this.#assetBytes(source);
         if (!data) throw new Error(`字体资源不存在: ${source}`);
         const FontFaceCtor = globalThis.FontFace;
-        const fonts = globalThis.document?.fonts;
+        // 主线程是 document.fonts，worker 里字体集合挂在 self.fonts 上。
+        const fonts = globalThis.document?.fonts ?? (globalThis as unknown as { fonts?: FontFaceSet }).fonts;
         if (!FontFaceCtor || !fonts) throw new Error("当前环境不支持 FontFace 加载");
         const face = new FontFaceCtor(family, data);
         await face.load();

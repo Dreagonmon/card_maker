@@ -3,7 +3,7 @@
     "tasks": {
         "assest": "rm -rf ./dist",
         "build:release:worker": {
-            "command": "deno bundle --outdir ./dist/tmp --minify --inline-imports=true --platform=browser --format=esm ./src/wasm_plugin_worker.ts",
+            "command": "deno bundle --outdir ./dist/tmp --minify --inline-imports=true --platform=browser --format=esm ./src/wasm_plugin_worker.ts && deno bundle --outdir ./dist/tmp --minify --inline-imports=true --platform=browser --format=esm ./src/draw_worker.ts",
             "dependencies": []
         },
         "build:release:html": {
@@ -14,7 +14,7 @@
             "dependencies": ["assest", "build:release:worker", "build:release:html"]
         },
         "build:dev:worker": {
-            "command": "deno bundle --outdir ./dist/tmp --sourcemap --keep-names --inline-imports=true --platform=browser --format=esm --watch ./src/wasm_plugin_worker.ts",
+            "command": "deno bundle --outdir ./dist/tmp --sourcemap --keep-names --inline-imports=true --platform=browser --format=esm --watch ./src/wasm_plugin_worker.ts ./src/draw_worker.ts",
             "dependencies": []
         },
         "build:dev:html": {

@@ -1,7 +1,13 @@
 /// <reference lib="webworker" />
 
 import { CardFace, CardItem, DeckData, Scope } from "./data/deck.ts";
-import type { WasmWorkerEventData, WasmWorkerRequestGenerateCardFace } from "./ext/wasm_worker_msg.d.ts";
+import type {
+    DrawPortMessage,
+    DrawPortSyncDoneMessage,
+    DrawPortSyncMessage,
+    WasmWorkerEventData,
+    WasmWorkerRequestGenerateCardFace,
+} from "./ext/wasm_worker_msg.d.ts";
 import { WASMEnv } from "./ext/wasmenv.ts";
 
 class CardMakerWorkerRuntimeError extends Error {
@@ -10,7 +16,7 @@ class CardMakerWorkerRuntimeError extends Error {
     }
 }
 
-const sendSimpleEvent = (action: "error" | "output" | "draw" | "finish", params: string) => {
+const sendSimpleEvent = (action: "output" | "error" | "finish", params: string) => {
     const msg: WasmWorkerEventData = {
         action,
         params,
@@ -22,8 +28,22 @@ const generateCardFace = async (
     deck: DeckData,
     card: CardItem,
     face: CardFace | "front" | "back" | undefined,
+    drawPort: MessagePort,
     historySize: number = 1000,
 ) => {
+    // 绘图指令发往 Draw worker 的端口；sync 等待其画完的确认。
+    // 一次运行只在结束（或出错）前 sync 一次，用单个 waiter 即可。
+    let resolveSync: (() => void) | undefined;
+    drawPort.addEventListener("message", (ev: MessageEvent<DrawPortMessage>) => {
+        if (ev.data.action === "syncDone") {
+            resolveSync?.();
+        }
+    });
+    const syncDraw = () => new Promise<void>((resolve) => {
+        resolveSync = resolve;
+        const msg: DrawPortSyncMessage = { action: "sync" };
+        drawPort.postMessage(msg);
+    });
     // get card face
     if (typeof face === "string") {
         if (face === "front") face = deck.getCardFaceById(card.frontFaceId);
@@ -63,8 +83,9 @@ const generateCardFace = async (
     });
     rt.addEventListener("variableChanged", ({ data }) => {
         if (data.name === "@draw") {
-            // process draw command
-            sendSimpleEvent("draw", data.value.toString());
+            // 异步投递绘图指令给 Draw worker，不阻塞 wasm 线程
+            const msg: DrawPortMessage = { action: "draw", params: data.value.toString() };
+            drawPort.postMessage(msg);
         }
     });
     // init modules
@@ -76,27 +97,37 @@ const generateCardFace = async (
     );
     await rt.initInstance();
     // run function
-    const funcName = face.entryFunction;
-    if (!(rt.getExportedFunctions()?.[funcName])) {
-        throw new CardMakerWorkerRuntimeError(`Function '${funcName}' not found in the wasm module.`);
-    } else {
-        const funcTable = rt.getExportedFunctions();
-        (funcTable[funcName])();
+    try {
+        const funcName = face.entryFunction;
+        if (!(rt.getExportedFunctions()?.[funcName])) {
+            throw new CardMakerWorkerRuntimeError(`Function '${funcName}' not found in the wasm module.`);
+        } else {
+            const funcTable = rt.getExportedFunctions();
+            (funcTable[funcName])();
+        }
+        // clean up
+        rt.finishOutputBuffer();
+    } finally {
+        // 无论正常结束还是出错，都等 Draw worker 把已提交指令画完再返回。
+        await syncDraw();
+        drawPort.close();
     }
-    // clean up
-    rt.finishOutputBuffer();
     return;
 };
 
 globalThis.addEventListener("message", async (event: MessageEvent<WasmWorkerRequestGenerateCardFace>) => {
     if (event.data.action === "generateCardFace") {
+        const drawPort = event.ports[0];
         try {
+            if (!drawPort) throw new CardMakerWorkerRuntimeError("Missing draw port.");
+            drawPort.start();
             const deck = new DeckData();
             deck.setDeck(event.data.params.deck);
-            await generateCardFace(deck, event.data.params.card, event.data.params.face);
+            await generateCardFace(deck, event.data.params.card, event.data.params.face, drawPort);
             sendSimpleEvent("finish", "");
         } catch (err) {
             console.error(err);
+            drawPort?.close();
             if (err instanceof Error) {
                 sendSimpleEvent("error", err.message);
             } else {

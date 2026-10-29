@@ -1,12 +1,20 @@
 import WORKER_JS_SOURCE from "../../dist/tmp/wasm_plugin_worker.js" with { type: "text" };
+import DRAW_WORKER_JS_SOURCE from "../../dist/tmp/draw_worker.js" with { type: "text" };
 import { CardFace, CardItem, DeckData } from "../data/deck.ts";
-import { DrawingQueue } from "./draw_queue.ts";
-import type { WasmWorkerEventData, WasmWorkerRequestGenerateCardFace } from "./wasm_worker_msg.d.ts";
-const WORKER_BLOB_URL = (() => {
-    const blob = new Blob([WORKER_JS_SOURCE], { type: "application/javascript" });
+import type {
+    DrawWorkerEventData,
+    DrawWorkerInitRequest,
+    WasmWorkerEventData,
+    WasmWorkerRequestGenerateCardFace,
+} from "./wasm_worker_msg.d.ts";
+
+const makeBlobUrl = (source: string) => {
+    const blob = new Blob([source], { type: "application/javascript" });
     const url = URL.createObjectURL(blob);
     return url;
-})();
+};
+const WORKER_BLOB_URL = makeBlobUrl(WORKER_JS_SOURCE);
+const DRAW_WORKER_BLOB_URL = makeBlobUrl(DRAW_WORKER_JS_SOURCE);
 
 export class CardMakerRuntimeError extends Error {
     constructor(msg?: string) {
@@ -16,6 +24,7 @@ export class CardMakerRuntimeError extends Error {
 
 export class GenerateCardFaceRunner {
     #worker: Worker;
+    #drawWorker: Worker;
     start: () => void;
     constructor(
         deck: DeckData,
@@ -39,48 +48,61 @@ export class GenerateCardFaceRunner {
             this.terminate();
             fn();
         };
-        // drawing queue
         const cd = globalThis.structuredClone(deck.getDeck()); // snapshot current deck
-        const dq = new DrawingQueue(cd, (bitmap) => {
-            const result = onDraw?.(bitmap) ?? {};
-            if (result instanceof Promise) {
-                result.finally(() => bitmap.close());
-            } else {
-                bitmap.close();
+        // wasm worker ↔ draw worker 之间的绘图指令通道
+        const channel = new MessageChannel();
+        // draw worker：跑 DrawingQueue，画好的画面回传主线程
+        this.#drawWorker = new Worker(DRAW_WORKER_BLOB_URL);
+        this.#drawWorker.addEventListener("message", (event: MessageEvent<DrawWorkerEventData>) => {
+            const data = event.data;
+            if (data.action === "bitmap") {
+                const bitmap = data.params;
+                const result = onDraw?.(bitmap) ?? {};
+                if (result instanceof Promise) {
+                    result.finally(() => bitmap.close());
+                } else {
+                    bitmap.close();
+                }
+            } else if (data.action === "error") {
+                settle(() => onError?.(data.params));
             }
-        }, (errMsg) => {
-            settle(() => onError?.(errMsg));
-        }, { card, face: face });
+        });
+        const initMsg: DrawWorkerInitRequest = {
+            action: "init",
+            params: {
+                deck: cd,
+                card: card,
+                face: face,
+            },
+        };
+        this.#drawWorker.postMessage(initMsg, { transfer: [channel.port2] });
         // wasm worker
         this.#worker = new Worker(WORKER_BLOB_URL);
         this.#worker.addEventListener("message", (event: MessageEvent<WasmWorkerEventData>) => {
             if (event.data.action === "output") {
                 onOutput?.(event.data.params);
-            } else if (event.data.action === "draw") {
-                dq.submitDrawCommand(event.data.params);
             } else if (event.data.action === "finish") {
-                dq.waitFinish().then(() => {
-                    settle(() => onFinish?.());
-                });
+                // worker 内已等 Draw worker 画完才发 finish，这里无需再排队等待
+                settle(() => onFinish?.());
             } else if (event.data.action === "error") {
-                dq.waitFinish().then(() => {
-                    settle(() => onError?.(event.data.params));
-                });
+                settle(() => onError?.(event.data.params));
             }
         });
         // call the worker
         this.start = () => {
-            this.#worker.postMessage({
+            const msg: WasmWorkerRequestGenerateCardFace = {
                 action: "generateCardFace",
                 params: {
                     deck: cd,
                     card: card,
                     face: face,
                 },
-            } as WasmWorkerRequestGenerateCardFace);
+            };
+            this.#worker.postMessage(msg, { transfer: [channel.port1] });
         };
     }
     terminate() {
         this.#worker.terminate();
+        this.#drawWorker.terminate();
     }
 }
