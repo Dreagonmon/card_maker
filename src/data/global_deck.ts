@@ -1,4 +1,5 @@
 import asset_fe_wasm from "./builtin/card_maker_plugin_fe.wasm.json" with { type: "json" };
+import demo_pelican from "./builtin/demo_pelican.fe.json" with { type: "json" };
 import main_fe from "./builtin/main.fe.json" with { type: "json" };
 import departure_mono_font_map from "./builtin/departure_mono_font_map.html.json" with { type: "json" };
 import { CARD_DECK_DATA_VERSION, CardDeck, DataRecordType, DeckData, Scope } from "./deck.ts";
@@ -69,7 +70,7 @@ export const EXAMPLE_DECK: CardDeck = {
             executable: "card_maker_plugin_fe.wasm",
             entryFunction: "eval",
             data: {
-                "script_file": "main.fe",
+                "script_file": "demo_pelican.fe",
                 "example_boolean": "1",
                 "example_number": "999",
                 "example_multitext": "Hello\nWorld",
@@ -92,6 +93,7 @@ export const EXAMPLE_DECK: CardDeck = {
         },
     ],
     assets: [
+        demo_pelican,
         main_fe,
         departure_mono_font_map,
         asset_fe_wasm,
@@ -100,7 +102,7 @@ export const EXAMPLE_DECK: CardDeck = {
     note: "",
     cardWidth: 100,
     cardHeight: 100,
-    sizeScale: 1.0,
+    sizeScale: 10.0,
 };
 
 export const globalDeck: DeckData = (() => {
