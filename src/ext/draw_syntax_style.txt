@@ -1,0 +1,454 @@
+Canvas / OffscreenCanvas 绘制样式指令文档
+==========================================
+
+说明
+----
+1. 本文档列出“设置绘制样式”的指令，以及文本字体加载指令 fontface；不包含绘图方法。
+2. 样式指令作用于当前 2D 渲染上下文。
+3. 不支持句柄、渐变、图案。
+4. 参数只支持：数字字面量、字符串字面量、${var} 外部变量引用。
+5. 除 setlinedash 和 fontface 外，其他样式指令不按 | 分割参数。
+
+
+一、总语法
+----------
+<func>:<param>
+<func>:<param1>|<param2>|...
+
+说明：
+- 每次调用 setString("@draw", "<func>:...") 执行一条指令。
+- func 统一小写。
+- 无参数指令写成 save:、restore:。
+- setlinedash 和 fontface 是使用 | 分隔参数的样式指令。
+
+
+二、通用约定
+------------
+1. 参数取 : 后到行尾，去掉首尾空白。
+2. 除 setlinedash 和 fontface 外，参数整体作为一个参数，不解析 |。
+3. 参数可以是：
+   - 数字字面量，如 4、0.5、-2
+   - 字符串字面量，如 #ff6600、rgba(0,0,0,.5)、bold 16px sans-serif
+   - 外部变量引用，如 ${lineWidth}
+4. 变量名规则：[A-Za-z_][A-Za-z0-9_]*
+5. 变量替换顺序：
+   - 先按指令规则分割参数（若该指令支持 |）。
+   - 再对每个参数执行 ${var} 文本替换。
+   - 替换后不再重新按 | 分割参数。
+6. 变量嵌入字符串时，按字符串拼接处理。
+7. 数值参数替换后必须能解析为数字。
+8. 布尔参数替换后只允许 true / false。
+9. 枚举参数必须匹配允许值。
+10. 未知变量、非法枚举、数值越界、布尔值非法应报错。
+
+
+三、状态管理
+------------
+指令：save:
+参数：无
+作用：保存当前样式状态
+示例：save:
+
+指令：restore:
+参数：无
+作用：恢复最近保存的样式状态
+示例：restore:
+
+指令：reset:
+参数：无
+作用：将当前 2D 渲染上下文重置为默认状态，包括样式、变换、裁剪区域等；无返回值。
+说明：会清空当前上下文状态，建议谨慎使用。
+示例：reset:
+
+
+四、填充与描边样式
+------------------
+指令：fillstyle:<style>
+参数：style
+类型/约束：字符串 / ${var}
+作用：设置填充样式
+示例：
+  fillstyle:#ff6600
+  fillstyle:rgba(255, 102, 0, 0.8)
+  fillstyle:${fillColor}
+
+指令：strokestyle:<style>
+参数：style
+类型/约束：字符串 / ${var}
+作用：设置描边样式
+示例：
+  strokestyle:rgba(0,0,0,0.5)
+  strokestyle:${strokeColor}
+
+
+五、线条样式
+------------
+指令：linewidth:<number>
+参数：number
+类型/约束：数字 / ${var}，非负
+作用：设置线宽
+示例：
+  linewidth:4
+  linewidth:${lineWidth}
+
+指令：linecap:<enum>
+参数：enum
+类型/约束：butt / round / square
+作用：设置线条端点样式
+示例：
+  linecap:round
+
+指令：linejoin:<enum>
+参数：enum
+类型/约束：miter / round / bevel
+作用：设置线段交汇处样式
+示例：
+  linejoin:bevel
+
+指令：setlinedash:<n>|<n>|...
+参数：数字列表
+类型/约束：数字 / ${var}；本指令使用 | 分隔；数字非负
+作用：设置虚线样式
+示例：
+  setlinedash:8|4
+  setlinedash:${dashLen}|${gapLen}
+
+指令：setlinedash:
+参数：空
+类型/约束：空参数
+作用：清除虚线
+示例：
+  setlinedash:
+
+指令：linedashoffset:<number>
+参数：number
+类型/约束：数字 / ${var}
+作用：设置虚线起始偏移量
+示例：
+  linedashoffset:4
+  linedashoffset:${offset}
+
+指令：miterlimit:<number>
+参数：number
+类型/约束：数字 / ${var}，非负
+作用：设置尖角限制比例
+示例：
+  miterlimit:10
+  miterlimit:${miterLimit}
+
+
+六、阴影样式
+------------
+指令：shadowcolor:<color>
+参数：color
+类型/约束：字符串 / ${var}
+作用：设置阴影颜色
+示例：
+  shadowcolor:rgba(0,0,0,0.35)
+  shadowcolor:${shadowColor}
+
+指令：shadowblur:<number>
+参数：number
+类型/约束：数字 / ${var}，非负
+作用：设置阴影模糊程度
+示例：
+  shadowblur:12
+  shadowblur:${shadowBlur}
+
+指令：shadowoffsetx:<number>
+参数：number
+类型/约束：数字 / ${var}
+作用：设置阴影水平偏移
+示例：
+  shadowoffsetx:4
+
+指令：shadowoffsety:<number>
+参数：number
+类型/约束：数字 / ${var}
+作用：设置阴影垂直偏移
+示例：
+  shadowoffsety:6
+
+
+七、文本样式与字体加载
+----------------------
+说明：这里只设置文本样式或加载字体，不包含文本绘制指令。
+
+指令：fontface:<family>|<source>
+参数：
+  family：字体名称，可用于 CSS 样式中；如果该名称已经存在，则覆盖已存在的字体。
+  source：字体源，为虚拟文件系统中的资源名称；无协议符号，不支持 URL 等外部路径。
+类型/约束：
+  family、source 均为字符串 / ${var}，且均不能为空。
+作用：
+  同步加载字体样式。实际执行时会 await 直到字体加载完成，才执行下一条绘制指令。
+  不支持可选的字体描述符。
+  加载完成后，family 可用于后续 font 指令。
+示例：
+  fontface:Departure Mono Regular|Departure Mono.otf
+  fontface:${fontFamily}|${fontSource}
+
+指令：font:<string>
+参数：string
+类型/约束：字符串 / ${var}
+作用：设置 CSS 字体样式
+示例：
+  font:bold 16px "Microsoft YaHei", sans-serif
+  font:${fontStyle}
+
+指令：textalign:<enum>
+参数：enum
+类型/约束：start / end / left / right / center
+作用：设置文本水平对齐方式
+示例：
+  textalign:center
+
+指令：textbaseline:<enum>
+参数：enum
+类型/约束：top / hanging / middle / alphabetic / ideographic / bottom
+作用：设置文本基线对齐方式
+示例：
+  textbaseline:middle
+
+指令：direction:<enum>
+参数：enum
+类型/约束：ltr / rtl
+作用：设置文本方向
+示例：
+  direction:ltr
+  direction:rtl
+
+指令：fontkerning:<enum>
+参数：enum
+类型/约束：auto / normal / none
+作用：设置字体字距调整方式
+示例：
+  fontkerning:normal
+
+指令：fontstretch:<enum>
+参数：enum
+类型/约束：
+  ultra-condensed / extra-condensed / condensed / semi-condensed / normal /
+  semi-expanded / expanded / extra-expanded / ultra-expanded
+作用：设置字体拉伸程度
+示例：
+  fontstretch:condensed
+
+指令：fontvariantcaps:<enum>
+参数：enum
+类型/约束：
+  normal / small-caps / all-small-caps / petite-caps / all-petite-caps /
+  unicase / titling-caps
+作用：设置字体大小写变体
+示例：
+  fontvariantcaps:small-caps
+
+指令：letterspacing:<string>
+参数：string
+类型/约束：字符串 / ${var}，如 normal、2px
+作用：设置字符间距
+示例：
+  letterspacing:2px
+  letterspacing:${letterSpacing}
+
+指令：wordspacing:<string>
+参数：string
+类型/约束：字符串 / ${var}，如 normal、4px
+作用：设置词间距
+示例：
+  wordspacing:4px
+  wordspacing:${wordSpacing}
+
+指令：textrendering:<enum>
+参数：enum
+类型/约束：auto / optimizeSpeed / optimizeLegibility / geometricPrecision
+作用：设置文本渲染提示
+示例：
+  textrendering:optimizeLegibility
+
+指令：lineheight:<number>
+参数：number
+类型/约束：数字 / ${var}，非负，表示行高倍数
+作用：设置多行文本的行高倍数，默认 1.2。
+说明：
+  - Canvas 原生没有行高属性，该值仅由解析器记录，并在文本绘制时用于计算行间距。
+  - 实际行高 = 当前 font 字号 × lineheight。
+  - 只影响 filltext / stroketext 的多行布局，不影响单行文本。
+示例：
+  lineheight:1.5
+  lineheight:${lineHeight}
+
+
+八、全局合成与图像平滑
+----------------------
+指令：globalalpha:<number>
+参数：number
+类型/约束：数字 / ${var}，范围 0 ~ 1
+作用：设置全局透明度
+示例：
+  globalalpha:0.5
+  globalalpha:${alpha}
+
+指令：globalcompositeoperation:<enum>
+参数：enum
+类型/约束：
+  Canvas 支持的合成模式，包括但不限于：
+  source-over / source-in / source-out / source-atop /
+  destination-over / destination-in / destination-out / destination-atop /
+  lighter / copy / xor /
+  multiply / screen / overlay / darken / lighten /
+  color-dodge / color-burn / hard-light / soft-light /
+  difference / exclusion / hue / saturation / color / luminosity
+作用：设置新绘制内容与已有内容的合成方式
+示例：
+  globalcompositeoperation:source-over
+  globalcompositeoperation:multiply
+
+指令：filter:<string>
+参数：string
+类型/约束：字符串 / ${var}，如 none、blur(5px)
+作用：设置绘制时应用的 CSS 滤镜
+示例：
+  filter:none
+  filter:blur(5px)
+  filter:${filterValue}
+
+指令：imagesmoothingenabled:<bool>
+参数：bool
+类型/约束：true / false / ${var}
+作用：设置绘制图像时是否启用平滑
+示例：
+  imagesmoothingenabled:true
+  imagesmoothingenabled:false
+
+指令：imagesmoothingquality:<enum>
+参数：enum
+类型/约束：low / medium / high
+作用：设置图像平滑质量
+示例：
+  imagesmoothingquality:high
+
+
+九、参数分割规则
+----------------
+1. 普通样式指令：
+   参数整体保留，不按 | 分割。
+   例如：
+     font:bold 16px "Microsoft YaHei", sans-serif
+   整个 bold 16px "Microsoft YaHei", sans-serif 作为 font 参数。
+
+2. setlinedash：
+   按 | 分割为数字列表。
+   例如：
+     setlinedash:8|4
+   解析为 [8, 4]。
+
+3. setlinedash: 空参数：
+   表示清除虚线，解析为 []。
+
+4. fontface：
+   按 | 分割为恰好两个参数：family 和 source。
+   family、source 内部整体保留，不再按 | 分割。
+   变量替换后也不会重新分割参数。
+   例如：
+     fontface:Departure Mono Regular|Departure Mono.otf
+   解析为 family = "Departure Mono Regular"，source = "Departure Mono.otf"。
+
+5. fillstyle、strokestyle、shadowcolor：
+   颜色字符串内部可以包含括号、逗号、空格，不按 | 分割。
+
+6. font、filter、letterspacing、wordspacing：
+   字符串内部可以包含空格、括号、逗号、引号等，不按 | 分割。
+
+
+十、变量引用规则
+----------------
+1. 整个参数为变量：
+   fillstyle:${fillColor}
+   linewidth:${lineWidth}
+   globalalpha:${alpha}
+
+2. 变量嵌入字符串：
+   strokestyle:rgba(${r},${g},${b},0.5)
+   font:bold ${fontSize}px "Microsoft YaHei", sans-serif
+   filter:blur(${blur}px)
+
+3. 虚线参数：
+   setlinedash:${dashLen}|${gapLen}
+   先按 | 分割，再分别替换变量并校验为数字。
+
+4. 字体加载参数：
+   fontface:${fontFamily}|${fontSource}
+   先按 | 分割为两个参数，再分别替换变量。
+   替换后的变量值即使包含 |，也不会新增参数。
+
+5. 变量未定义时建议报错并中止当前批次。
+
+
+十一、完整示例
+--------------
+# 字体加载：等待加载完成后，再执行后续指令
+fontface:Departure Mono Regular|Departure Mono.otf
+font:16px "Departure Mono Regular", sans-serif
+
+save:
+
+fillstyle:#ff6600
+strokestyle:rgba(0,0,0,0.5)
+linewidth:4
+linecap:round
+linejoin:bevel
+setlinedash:8|4
+linedashoffset:2
+miterlimit:10
+
+shadowcolor:rgba(0,0,0,0.35)
+shadowblur:12
+shadowoffsetx:4
+shadowoffsety:6
+
+font:bold 16px "Microsoft YaHei", sans-serif
+textalign:center
+textbaseline:middle
+direction:ltr
+fontkerning:normal
+letterspacing:1px
+wordspacing:2px
+
+globalalpha:0.9
+globalcompositeoperation:source-over
+filter:blur(2px)
+imagesmoothingenabled:true
+imagesmoothingquality:high
+
+restore:
+
+
+十二、解析与校验建议
+--------------------
+1. 按每条命令解析，先找第一个 : 分割 func 和参数串。
+2. func 统一转小写后匹配指令。
+3. 除 setlinedash 和 fontface 外，不要按 | 分割参数。
+4. setlinedash 按 | 分割；空参数表示清除虚线；非空时每个数字必须为非负数。
+5. fontface 按 | 分割为恰好两个参数；family、source 均不能为空。
+6. 对参数执行 ${var} 替换；未知变量报错。
+7. 校验数值范围：
+   - linewidth >= 0
+   - shadowblur >= 0
+   - setlinedash 中每个数字 >= 0
+   - miterlimit >= 0
+   - globalalpha 在 0 ~ 1 之间
+8. 校验布尔参数：
+   - imagesmoothingenabled 替换后只允许 true / false
+9. 校验枚举值；非法枚举报错：
+   - linecap / linejoin
+   - textalign / textbaseline
+   - direction / fontkerning / fontstretch / fontvariantcaps / textrendering
+   - globalcompositeoperation
+   - imagesmoothingquality
+10. fillstyle、strokestyle、shadowcolor、filter、letterspacing、wordspacing 可交给 Canvas 赋值；必要时再做 CSS 语法校验。
+11. font 可交给 Canvas 赋值；必要时再做 CSS font 语法校验。
+12. fontface 执行时需等待字体加载完成；资源不存在或加载失败应报错并中止当前批次。
+13. fontface 的 family 若已存在，则覆盖已存在的字体。
+14. reset 必须无参数；执行后上下文恢复默认状态。
+15. lineheight 必须为非负数字；解析器需自行记录该值，并在文本绘制时用于计算行间距。Canvas 原生不支持行高属性。

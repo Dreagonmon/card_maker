@@ -1,0 +1,14 @@
+node_modules
+dist
+log/**
+!log/.gitkeep
+data/**
+!data/.gitkeep
+**/.DS_Store
+frpc.toml
+env.sh
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/*.env
+src/ext/*.wasm

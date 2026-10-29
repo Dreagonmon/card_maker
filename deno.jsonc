@@ -1,0 +1,61 @@
+{
+    // ok with deno 2.9.0
+    "tasks": {
+        "assest": "rm -rf ./dist",
+        "build:release:worker": {
+            "command": "deno bundle --outdir ./dist/tmp --minify --inline-imports=true --platform=browser --format=esm ./src/wasm_plugin_worker.ts",
+            "dependencies": []
+        },
+        "build:release:html": {
+            "command": "deno bundle --outdir ./dist --minify --inline-imports=true --platform=browser --format=esm ./src/index.html",
+            "dependencies": ["build:release:worker"]
+        },
+        "build": {
+            "dependencies": ["assest", "build:release:worker", "build:release:html"]
+        },
+        "build:dev:worker": {
+            "command": "deno bundle --outdir ./dist/tmp --sourcemap --keep-names --inline-imports=true --platform=browser --format=esm --watch ./src/wasm_plugin_worker.ts",
+            "dependencies": []
+        },
+        "build:dev:html": {
+            "command": "deno bundle --outdir ./dist --sourcemap --keep-names --inline-imports=true --platform=browser --format=esm --watch ./src/index.html",
+            "dependencies": ["build:release:worker"]
+        },
+        "serve": "deno x jsr:@std/http/file-server ./dist",
+        "dev": {
+            "dependencies": ["assest", "build:dev:worker", "build:dev:html", "serve"]
+        }
+    },
+    "unstable": [],
+    "minimumDependencyAge": "P5D",
+    "nodeModulesDir": "auto",
+    "jsrDepsInNodeModules": false,
+    "compilerOptions": {
+        // "jsx": "react-jsx",
+        // "jsxImportSource": "preact",
+        // "jsxFactory": "h",
+        // "jsxFragmentFactory": "Fragment",
+        "strict": true,
+        "lib": ["dom", "dom.iterable", "esnext", "deno.ns"]
+    },
+    "lint": {
+        "include": ["no-process-global", "no-node-globals"]
+    },
+    "fmt": {
+        "useTabs": false,
+        "lineWidth": 120,
+        "indentWidth": 4,
+        "semiColons": true,
+        "singleQuote": false,
+        "proseWrap": "preserve",
+        "include": ["src/", "scripts/"],
+        "exclude": ["src/testdata/", "src/fixtures/**/*.ts"]
+    },
+    "test": {
+        "sanitizeOps": true,
+        "sanitizeResources": true
+    },
+    "imports": {
+        "@tegmentum/wasi-polyfill": "npm:@tegmentum/wasi-polyfill@^0.1.1"
+    }
+}

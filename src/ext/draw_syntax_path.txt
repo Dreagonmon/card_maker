@@ -1,0 +1,314 @@
+Canvas / OffscreenCanvas 路径绘制指令文档
+==========================================
+
+说明
+----
+1. 本文档只整理“路径构建”与“路径绘制/裁剪”指令。
+2. 包含：beginpath、closepath、moveto、lineto、beziercurveto、quadraticcurveto、arc、arcto、ellipse、rect、roundrect、fill、stroke、clip。
+3. 不包含：矩形快捷方法（fillrect / strokerect / clearrect）、图片绘制、文本绘制、坐标变换。
+4. 路径指令作用于当前 2D 渲染上下文。
+5. 参数只支持：数字字面量、字符串字面量、${var} 外部变量引用。
+6. 角度参数统一使用角度（度）；执行时由解析器转换为弧度，再调用 Canvas API。
+7. 布尔参数用 true / false，省略时取默认值。
+8. 不支持 | 转义；| 只作为参数分隔符。需要包含 | 的字符串只能通过 ${var} 传入，但变量值中的 | 不会重新分割参数。
+
+
+一、总语法
+----------
+<func>:<param1>|<param2>|...|<paramn>
+<func>:
+
+说明：
+- 每次调用 setString("@draw", "<func>:...") 执行一条指令。
+- func 统一小写。
+- 无参数指令写成 beginpath:、closepath:、stroke:。
+- 多参数指令使用 | 分隔参数。
+- 不支持 | 转义；需要包含 | 的字符串只能通过 ${var} 传入，且不会重新分割参数。
+
+
+二、通用约定
+------------
+1. 参数取 : 后到行尾，去掉首尾空白。
+2. 解析顺序：
+   a. 先按指令规则用 | 分割参数。
+   b. 再对每个参数执行 ${var} 字符串替换。
+   c. 最后把替换后的整个参数字符串解析为目标类型（数字、布尔、枚举或原样字符串）。
+3. ${var} 一律按字符串替换处理，不保留变量原始类型。
+4. 变量替换后不再重新按 | 分割参数。
+5. 变量名规则：[A-Za-z_][A-Za-z0-9_]*
+6. 数字参数替换后必须能解析为数字。
+7. 布尔参数替换后只允许 true / false。
+8. 枚举参数替换后必须匹配允许值。
+9. 角度参数单位为度；解析器在执行前将其乘以 Math.PI / 180 转为弧度。
+10. 未知变量、非法枚举、数值越界、布尔值非法应报错。
+
+
+三、路径构建指令
+----------------
+指令：beginpath:
+参数：无
+作用：开始一条新路径
+示例：beginpath:
+
+指令：closepath:
+参数：无
+作用：闭合当前子路径
+示例：closepath:
+
+指令：moveto:<x>|<y>
+参数：x, y
+类型/约束：数字 / ${var}
+作用：将当前点移动到指定坐标
+示例：
+  moveto:10|20
+  moveto:${x}|${y}
+
+指令：lineto:<x>|<y>
+参数：x, y
+类型/约束：数字 / ${var}
+作用：从当前点画直线到目标点
+示例：
+  lineto:100|200
+  lineto:${x}|${y}
+
+指令：beziercurveto:<cp1x>|<cp1y>|<cp2x>|<cp2y>|<x>|<y>
+参数：cp1x, cp1y, cp2x, cp2y, x, y
+类型/约束：数字 / ${var}
+作用：三次贝塞尔曲线
+示例：
+  beziercurveto:20|0|80|100|100|0
+
+指令：quadraticcurveto:<cpx>|<cpy>|<x>|<y>
+参数：cpx, cpy, x, y
+类型/约束：数字 / ${var}
+作用：二次贝塞尔曲线
+示例：
+  quadraticcurveto:50|0|100|100
+
+指令：arc:<x>|<y>|<radius>|<startAngle>|<endAngle>[|<anticlockwise>]
+参数：x, y, radius, startAngle, endAngle, anticlockwise（可选）
+类型/约束：数字 / ${var}；anticlockwise 为 true / false
+约束：radius >= 0
+角度：startAngle、endAngle 单位为度
+作用：绘制圆弧
+示例：
+  arc:100|100|50|0|180
+  arc:100|100|50|0|180|true
+  arc:100|100|50|0|180|false
+
+指令：arcto:<x1>|<y1>|<x2>|<y2>|<radius>
+参数：x1, y1, x2, y2, radius
+类型/约束：数字 / ${var}
+约束：radius >= 0
+作用：绘制与两条切线相切的圆弧
+示例：
+  arcto:0|0|100|100|20
+
+指令：ellipse:<x>|<y>|<rx>|<ry>|<rotation>|<startAngle>|<endAngle>[|<anticlockwise>]
+参数：x, y, rx, ry, rotation, startAngle, endAngle, anticlockwise（可选）
+类型/约束：数字 / ${var}；anticlockwise 为 true / false
+约束：rx >= 0，ry >= 0
+角度：rotation、startAngle、endAngle 单位为度
+作用：绘制椭圆弧
+示例：
+  ellipse:100|100|60|30|0|0|360
+  ellipse:100|100|60|30|0|0|360|true
+  ellipse:100|100|60|30|45|0|360|false
+
+指令：rect:<x>|<y>|<w>|<h>
+参数：x, y, w, h
+类型/约束：数字 / ${var}
+作用：添加矩形子路径
+示例：
+  rect:10|10|200|100
+
+指令：roundrect:<x>|<y>|<w>|<h>|<radii...>
+参数：x, y, w, h, radii
+类型/约束：
+  x、y、w、h 为数字 / ${var}；
+  radii 为 1、2 或 4 个数字 / ${var}，使用 | 分隔。
+作用：添加圆角矩形子路径
+说明：
+  - radii 按顺序对应该 Canvas roundRect 的圆角规则。
+  - radii 只允许 1 个、2 个或 4 个值；3 个值视为非法。
+  - 参数总数（x、y、w、h + radii）只允许为 5、6 或 8 个；7 个视为非法。
+  - radii 的每个值必须为非负数字。
+  - 变量替换后若变量值含 |，不会重新分割；该参数会因含 | 而解析失败并报错。
+  - 因此无法通过单个 ${var} 传递多个半径值；多个半径只能写成多个 | 分隔的参数，或分别用多个 ${var}。
+示例：
+  roundrect:10|10|200|100|8
+  roundrect:10|10|200|100|8|16
+  roundrect:10|10|200|100|8|16|8|16
+  roundrect:10|10|200|100|${radius1}|${radius2}
+反例：
+  roundrect:10|10|200|100|8|16|8        # 非法：3 个 radii
+  roundrect:10|10|200|100|8|16|8|16|8   # 非法：5 个 radii
+
+
+四、路径绘制与裁剪指令
+----------------------
+指令：fill:
+参数：无
+作用：按默认 nonzero 规则填充当前路径
+示例：fill:
+
+指令：fill:<fillRule>
+参数：fillRule
+类型/约束：nonzero / evenodd
+作用：按指定规则填充当前路径
+示例：
+  fill:nonzero
+  fill:evenodd
+
+指令：stroke:
+参数：无
+作用：描边当前路径
+示例：stroke:
+
+指令：clip:
+参数：无
+作用：按默认 nonzero 规则裁剪到当前路径
+示例：clip:
+
+指令：clip:<fillRule>
+参数：fillRule
+类型/约束：nonzero / evenodd
+作用：按指定规则裁剪到当前路径
+示例：
+  clip:nonzero
+  clip:evenodd
+
+
+五、参数分割规则
+----------------
+1. beginpath、closepath、stroke：
+   无参数，写成 func:。
+
+2. fill、clip：
+   可选单参数 fillRule；省略时默认 nonzero。
+   不按 | 分割，不允许多个参数。
+   变量替换后整体校验是否为 nonzero / evenodd。
+
+3. moveto、lineto、beziercurveto、quadraticcurveto、arc、arcto、ellipse、rect：
+   按 | 分割参数。
+   参数个数必须匹配指令要求；arc、ellipse 的最后一个 anticlockwise 可选。
+   每个参数先做 ${var} 字符串替换，再解析为数字或布尔。
+   替换后的字符串必须能解析为目标类型，否则报错。
+
+4. roundrect：
+   按 | 分割全部参数。
+   前 4 个参数依次为 x、y、w、h。
+   剩余参数为 radii，数量只允许为 1、2 或 4。
+   参数总数必须为 5、6 或 8 个；7 个视为非法。
+   radii 中每个值先做 ${var} 替换，再解析为非负数字。
+   变量值中的 | 不会重新分割参数；若因此导致数字解析失败，报错。
+   无法通过单个 ${var} 传递多个半径值。
+
+5. arc、ellipse 的角度参数：
+   startAngle、endAngle、rotation 使用角度（度）。
+   解析器在调用 Canvas API 前统一转换为弧度。
+
+6. arc、ellipse 的 anticlockwise：
+   省略时按 false 处理。
+   变量替换后只允许 true / false。
+
+
+六、变量引用规则
+----------------
+1. 变量替换是字符串替换：
+   moveto:${x}|${y}
+   先分割为 ${x} 和 ${y}，再分别替换为字符串值，最后解析为数字。
+
+2. 整个参数为变量：
+   arc:${cx}|${cy}|${r}|${start}|${end}|${anticlockwise}
+   每个参数都是先分割、再替换、再解析。
+
+3. 变量嵌入字符串：
+   roundrect:10|10|200|100|${radius}
+   替换后得到 10、10、200、100、<radius字符串>，再逐个解析。
+   此时只传入 1 个 radius 参数，即四个圆角大小相同。
+
+4. 圆角参数：
+   roundrect:${x}|${y}|${w}|${h}|${r1}|${r2}
+   先按 | 分割参数，再逐个替换变量。
+   参数总数必须为 5、6 或 8 个。
+   变量值中的 | 不会重新分割参数；因该参数需要数字，会因含 | 而解析失败并报错。
+   无法用 ${radii} 一次性传入 8|16|8|16。
+
+5. 不支持 | 转义：
+   字面量中不能通过 \| 等方式表示 |。
+   需要包含 | 的字符串只能放在 ${var} 中传入；
+   但变量值中的 | 不会重新分割参数，也不会被当作分隔符。
+
+6. 变量未定义时建议报错并中止当前批次。
+
+
+七、完整示例
+------------
+beginpath:
+moveto:50|50
+lineto:200|50
+quadraticcurveto:250|50|250|150|200|150
+lineto:50|150
+closepath:
+
+fillstyle:#ff6600
+fill:
+strokestyle:#333333
+linewidth:4
+stroke:
+
+# 圆角矩形路径：1 个半径
+beginpath:
+roundrect:300|50|150|100|12
+fillstyle:rgba(0,120,255,0.6)
+fill:
+
+# 圆角矩形路径：4 个不同半径
+beginpath:
+roundrect:50|200|200|120|8|16|24|32
+fillstyle:rgba(0,180,120,0.5)
+fill:
+
+# 圆弧路径：0 度到 180 度
+beginpath:
+arc:100|300|60|0|180|false
+strokestyle:#000000
+stroke:
+
+# 椭圆弧：旋转 45 度，0 度到 360 度
+beginpath:
+ellipse:400|300|80|40|45|0|360|false
+strokestyle:#0066ff
+stroke:
+
+# 裁剪
+beginpath:
+rect:20|20|200|120
+clip:
+fillstyle:rgba(255,0,0,0.3)
+fill:
+
+
+八、解析与校验建议
+------------------
+1. 按每条命令解析，先找第一个 : 分割 func 和参数串。
+2. func 统一转小写后匹配指令。
+3. beginpath、closepath、stroke 必须无参数。
+4. fill、clip 最多一个参数，且替换变量后必须为 nonzero / evenodd。
+5. 除 roundrect 外，按 | 分割参数；参数个数必须匹配。
+6. roundrect 按 | 分割全部参数，参数总数必须为 5、6 或 8 个；前 4 个为 x、y、w、h，剩余为 radii。
+   radii 数量为 1、2 或 4；3 个视为非法；参数总数 7 个视为非法。
+   无法通过单个 ${var} 传递多个半径值。
+7. 每个参数先做 ${var} 字符串替换，再解析为目标类型；未知变量报错。
+8. 校验数值范围：
+   - arc 的 radius >= 0
+   - arcto 的 radius >= 0
+   - ellipse 的 rx >= 0、ry >= 0
+   - roundrect 的每个 radii >= 0
+9. 校验布尔参数替换后只允许 true / false。
+10. arc、ellipse 的 anticlockwise 省略时按 false 处理。
+11. 角度参数在调用 Canvas API 前统一乘以 Math.PI / 180 转为弧度。
+12. fill、clip 的 fillRule 非法时报错。
+13. 不支持 | 转义；变量值中的 | 不会重新分割参数，若导致类型解析失败则报错。
+14. 路径绘制指令只负责路径与像素输出，不设置样式；样式由 fillstyle、strokestyle、linewidth 等样式指令负责。

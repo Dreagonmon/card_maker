@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<!-- <html data-theme="light"> -->
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="color-scheme" content="light">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>卡牌制作器</title>
+        <script type="module" src="./main.ts"></script>
+        <style>
+        * {
+            box-sizing: border-box;
+        }
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+        }
+        .s-size-max {
+            height: 100%;
+            width: 100%;
+        }
+        .s-flex-center {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .s-flex-column {
+            display: flex;
+            flex-direction: column;
+        }
+        </style>
+    </head>
+    <body>
+        <m-tabpane class="s-size-max">
+            <m-tab label="首页">
+                <div class="s-size-max s-flex-center s-flex-column">
+                    <h1>卡牌制作器</h1>
+                </div>
+            </m-tab>
+            <m-tab label="数据项管理">
+                <m-table id="data_record_table"></m-table>
+            </m-tab>
+            <m-tab label="资源管理">
+                <m-table id="asset_table" class="s-table"></m-table>
+            </m-tab>
+            <m-tab label="卡面模板">
+                <m-table id="card_face_table" class="s-table"></m-table>
+            </m-tab>
+            <m-tab label="卡牌列表">
+                <m-table id="card_item_table" class="s-table"></m-table>
+            </m-tab>
+            <m-tab label="制作卡牌" active>
+                <page-generate-card />
+            </m-tab>
+        </m-tabpane>
+    </body>
+</html>
