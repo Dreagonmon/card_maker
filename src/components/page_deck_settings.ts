@@ -1,4 +1,4 @@
-import { globalDeck } from "../data/global_deck.ts";
+import { EXAMPLE_DECK, globalDeck } from "../data/global_deck.ts";
 import { CARD_DECK_DATA_VERSION, CardDeck } from "../data/deck.ts";
 import { dialogAlert } from "./dialog.ts";
 import "../font.css";
@@ -35,12 +35,11 @@ export class PageDeckSettings extends HTMLElement {
         this.#root = this.attachShadow({ mode: "open" });
 
         const rows = FIELDS.map((f) => {
-            const input =
-                f.type === "textarea"
-                    ? `<textarea id="f-${f.key}" rows="4" spellcheck="false"></textarea>`
-                    : `<input id="f-${f.key}" type="${f.type}"${
-                          f.min !== undefined ? ` min="${f.min}"` : ""
-                      }${f.step !== undefined ? ` step="${f.step}"` : ""}>`;
+            const input = f.type === "textarea"
+                ? `<textarea id="f-${f.key}" rows="4" spellcheck="false"></textarea>`
+                : `<input id="f-${f.key}" type="${f.type}"${f.min !== undefined ? ` min="${f.min}"` : ""}${
+                    f.step !== undefined ? ` step="${f.step}"` : ""
+                }>`;
             return /*html*/ `
             <div class="field">
                 <label for="f-${f.key}">${f.label}</label>
@@ -95,12 +94,21 @@ export class PageDeckSettings extends HTMLElement {
                 justify-content: flex-end;
                 gap: 0.5rem;
             }
+            .footer .spacer {
+                display: inline-block;
+                flex: 1 1 auto;
+            }
+            .footer>*:not(.spacer) {
+                flex: 0 0 auto;
+            }
         </style>
         <div class="page">
             <h1>卡组设置</h1>
             <form novalidate>
                 ${rows}
                 <div class="footer">
+                    <button id="reset-card-deck" type="button">!重置卡组!</button>
+                    <span class="spacer"></span>
                     <span id="save-status"></span>
                     <button id="import" type="button">导入</button>
                     <button id="export" type="button">导出</button>
@@ -115,7 +123,11 @@ export class PageDeckSettings extends HTMLElement {
             const el = this.#root.querySelector(`#f-${f.key}`) as HTMLInputElement | HTMLTextAreaElement;
             this.#inputs.set(f.key, el);
         }
-
+        // reset
+        (this.#root.querySelector("#reset-card-deck") as HTMLButtonElement).addEventListener("click", () => {
+            globalDeck.setDeck(globalThis.structuredClone(EXAMPLE_DECK));
+        });
+        // save
         this.#buttonSave = this.#root.querySelector("#save") as HTMLButtonElement;
         this.#saveStatus = this.#root.querySelector("#save-status") as HTMLSpanElement;
         this.#buttonSave.addEventListener("click", () => this.#save());
