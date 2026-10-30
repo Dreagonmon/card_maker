@@ -87,12 +87,14 @@ export class GenerateCardFaceRunner {
                 // worker 内已等 Draw worker 画完才发 finish，这里无需再排队等待
                 const bitmap = event.data.bitmap;
                 settle(() => {
-                    onFinish?.(bitmap);
+                    const result = onFinish?.(bitmap) ?? {};
+                    // 与 onDraw 一致：回调执行后由本类回收；外部留存需自行复制
+                    if (result instanceof Promise) {
+                        result.finally(() => bitmap?.close());
+                    } else {
+                        bitmap?.close();
+                    }
                 });
-                // 与 onDraw 一致：回调执行后由本类回收；外部留存需自行复制
-                if (bitmap) {
-                    bitmap.close();
-                }
             } else if (event.data.action === "error") {
                 settle(() => onError?.(event.data.params));
             }

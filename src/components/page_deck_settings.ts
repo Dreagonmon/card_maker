@@ -15,11 +15,11 @@ interface FieldDef {
 }
 
 const FIELDS: FieldDef[] = [
-    { key: "name", label: "牌组名称", type: "text", hint: "显示用名称" },
-    { key: "note", label: "备注", type: "textarea", hint: "牌组的说明文字" },
-    { key: "cardWidth", label: "卡片宽度 (mm)", type: "number", hint: "生成画布的宽度", min: 1, step: 0.1 },
-    { key: "cardHeight", label: "卡片高度 (mm)", type: "number", hint: "生成画布的高度", min: 1, step: 0.1 },
-    { key: "sizeScale", label: "渲染缩放 (px/mm)", type: "number", hint: "每毫米渲染的像素数", min: 0.1, step: 0.1 },
+    { key: "name", label: "卡组名称", type: "text", hint: "显示用名称" },
+    { key: "note", label: "备注", type: "textarea", hint: "卡组的说明文字" },
+    { key: "cardWidth", label: "卡片宽度 (像素)", type: "number", hint: "生成画布的像素宽度", min: 1, step: 0.1 },
+    { key: "cardHeight", label: "卡片高度 (像素)", type: "number", hint: "生成画布的像素高度", min: 1, step: 0.1 },
+    { key: "sizeScale", label: "渲染缩放 (像素倍率)", type: "number", hint: "实际渲染的像素比例", min: 0.1, step: 0.1 },
 ];
 
 export class PageDeckSettings extends HTMLElement {
@@ -97,7 +97,7 @@ export class PageDeckSettings extends HTMLElement {
             }
         </style>
         <div class="page">
-            <h1>牌组设置</h1>
+            <h1>卡组设置</h1>
             <form novalidate>
                 ${rows}
                 <div class="footer">
@@ -132,14 +132,6 @@ export class PageDeckSettings extends HTMLElement {
         });
         (this.#root.querySelector("#export") as HTMLButtonElement).addEventListener("click", () => {
             this.#exportFile();
-        });
-        // Ctrl/Cmd+S saves too
-        this.#root.addEventListener("keydown", (evt) => {
-            const ke = evt as KeyboardEvent;
-            if ((ke.ctrlKey || ke.metaKey) && ke.key === "s") {
-                evt.preventDefault();
-                this.#save();
-            }
         });
 
         // keep UI in sync when deck changes elsewhere (load/save/etc.)
@@ -190,7 +182,7 @@ export class PageDeckSettings extends HTMLElement {
             const text = await file.text();
             const data = JSON.parse(text) as Partial<CardDeck>;
             if (typeof data !== "object" || data === null || typeof data.version !== "number") {
-                dialogAlert("导入失败：不是有效的牌组文件（缺少 version 字段）");
+                dialogAlert("导入失败：不是有效的卡组文件（缺少 version 字段）");
                 return;
             }
             if (data.version > CARD_DECK_DATA_VERSION) {
