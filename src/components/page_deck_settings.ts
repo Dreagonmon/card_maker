@@ -1,5 +1,5 @@
 import { globalDeck } from "../data/global_deck.ts";
-import { CardDeck } from "../data/deck.ts";
+import { CARD_DECK_DATA_VERSION, CardDeck } from "../data/deck.ts";
 import { dialogAlert } from "./dialog.ts";
 import "../font.css";
 
@@ -102,7 +102,10 @@ export class PageDeckSettings extends HTMLElement {
                 ${rows}
                 <div class="footer">
                     <span id="save-status"></span>
+                    <button id="import" type="button">导入</button>
+                    <button id="export" type="button">导出</button>
                     <button id="save" type="button">保存</button>
+                    <input id="import-file" type="file" accept=".deck.json,application/json" hidden>
                 </div>
             </form>
         </div>
@@ -116,6 +119,20 @@ export class PageDeckSettings extends HTMLElement {
         this.#buttonSave = this.#root.querySelector("#save") as HTMLButtonElement;
         this.#saveStatus = this.#root.querySelector("#save-status") as HTMLSpanElement;
         this.#buttonSave.addEventListener("click", () => this.#save());
+        // import / export
+        const fileInput = this.#root.querySelector("#import-file") as HTMLInputElement;
+        (this.#root.querySelector("#import") as HTMLButtonElement).addEventListener("click", () => {
+            fileInput.click();
+        });
+        fileInput.addEventListener("change", async () => {
+            const file = fileInput.files?.[0];
+            fileInput.value = ""; // allow re-selecting the same file
+            if (!file) return;
+            await this.#importFile(file);
+        });
+        (this.#root.querySelector("#export") as HTMLButtonElement).addEventListener("click", () => {
+            this.#exportFile();
+        });
         // Ctrl/Cmd+S saves too
         this.#root.addEventListener("keydown", (evt) => {
             const ke = evt as KeyboardEvent;
@@ -152,6 +169,41 @@ export class PageDeckSettings extends HTMLElement {
 
     #setStatus(text: string) {
         this.#saveStatus.textContent = text;
+    }
+
+    #exportFile() {
+        const deck = this.#readDeck();
+        const text = JSON.stringify(deck, null, 2);
+        const blob = new Blob([text], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        const safeName = (deck.name || "deck").replaceAll(/[\\/:*?"<>|]/g, "_");
+        a.href = url;
+        a.download = `${safeName}.deck.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        this.#setStatus("已导出");
+    }
+
+    async #importFile(file: File) {
+        try {
+            const text = await file.text();
+            const data = JSON.parse(text) as Partial<CardDeck>;
+            if (typeof data !== "object" || data === null || typeof data.version !== "number") {
+                dialogAlert("导入失败：不是有效的牌组文件（缺少 version 字段）");
+                return;
+            }
+            if (data.version > CARD_DECK_DATA_VERSION) {
+                dialogAlert(`导入失败：文件版本 ${data.version} 高于当前支持的版本 ${CARD_DECK_DATA_VERSION}`);
+                return;
+            }
+            const deck = structuredClone(data) as CardDeck;
+            deck.version = CARD_DECK_DATA_VERSION;
+            globalDeck.setDeck(deck); // notifies "all": tables & persistence refresh
+            this.#setStatus("已导入");
+        } catch (e) {
+            dialogAlert(`导入失败：${e instanceof Error ? e.message : String(e)}`);
+        }
     }
 
     #validNumber(f: FieldDef, text: string): boolean {
