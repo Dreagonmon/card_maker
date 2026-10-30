@@ -34,8 +34,10 @@ const generateCardFace = async (
     // 绘图指令发往 Draw worker 的端口；sync 等待其画完的确认。
     // 一次运行只在结束（或出错）前 sync 一次，用单个 waiter 即可。
     let resolveSync: (() => void) | undefined;
+    let lastBitmap: ImageBitmap | undefined;
     drawPort.addEventListener("message", (ev: MessageEvent<DrawPortMessage>) => {
         if (ev.data.action === "syncDone") {
+            if (ev.data.params) lastBitmap = ev.data.params;
             resolveSync?.();
         }
     });
@@ -112,7 +114,7 @@ const generateCardFace = async (
         await syncDraw();
         drawPort.close();
     }
-    return;
+    return lastBitmap;
 };
 
 globalThis.addEventListener("message", async (event: MessageEvent<WasmWorkerRequestGenerateCardFace>) => {
@@ -123,8 +125,14 @@ globalThis.addEventListener("message", async (event: MessageEvent<WasmWorkerRequ
             drawPort.start();
             const deck = new DeckData();
             deck.setDeck(event.data.params.deck);
-            await generateCardFace(deck, event.data.params.card, event.data.params.face, drawPort);
-            sendSimpleEvent("finish", "");
+            const bitmap = await generateCardFace(deck, event.data.params.card, event.data.params.face, drawPort);
+            const msg: WasmWorkerEventData = { action: "finish", params: "", bitmap };
+            if (bitmap) {
+                // postMessage 的 transfer 在调用时同步移交所有权，之后 terminate 不会丢
+                globalThis.postMessage(msg, { transfer: [bitmap] });
+            } else {
+                globalThis.postMessage(msg);
+            }
         } catch (err) {
             console.error(err);
             drawPort?.close();

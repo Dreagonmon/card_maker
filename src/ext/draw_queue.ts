@@ -748,6 +748,11 @@ export class DrawingQueue {
     waitFinish() {
         return this.#working ? this.#working : Promise.resolve();
     }
+
+    /** 当前画布快照（最终输出用）。 */
+    snapshot(): Promise<ImageBitmap> {
+        return globalThis.createImageBitmap(this.#cv);
+    }
 }
 
 /** 路径构建 / 路径绘制裁剪指令集合。 */

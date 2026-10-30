@@ -23,6 +23,8 @@ export interface ErrorEventData {
 export interface FinishEventData {
     action: "finish";
     params: string;
+    /** 制作成功时的最终画面（由 Draw worker 在 syncDone 时快照，经 transfer 传递）。 */
+    bitmap?: ImageBitmap;
 }
 export type WasmWorkerEventData = OutputEventData | ErrorEventData | FinishEventData;
 
@@ -61,5 +63,7 @@ export interface DrawPortSyncMessage {
 /** Draw worker 确认已提交指令全部画完（或已出错中止）。 */
 export interface DrawPortSyncDoneMessage {
     action: "syncDone";
+    /** 画完后的最终画面快照，经 transfer 传入；出错中止时可能缺省。 */
+    params?: ImageBitmap;
 }
 export type DrawPortMessage = DrawPortCommandMessage | DrawPortSyncMessage | DrawPortSyncDoneMessage;

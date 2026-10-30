@@ -32,7 +32,9 @@ export class GenerateCardFaceRunner {
         faceObjOrText: CardFace | "front" | "back",
         onOutput?: (data: string) => void,
         onDraw?: (bitmap: ImageBitmap) => void,
-        onFinish?: () => void,
+        /** 制作成功时的最终画面；出错时不回调。回调返回后由本类统一 close()，
+         *  外部若要留存需自行复制（如 transferToImageBitmap/再 createImageBitmap）。 */
+        onFinish?: (bitmap: ImageBitmap | undefined) => void,
         onError?: (errMsg: string) => void,
     ) {
         let face: CardFace | "front" | "back" | undefined = faceObjOrText;
@@ -83,7 +85,14 @@ export class GenerateCardFaceRunner {
                 onOutput?.(event.data.params);
             } else if (event.data.action === "finish") {
                 // worker 内已等 Draw worker 画完才发 finish，这里无需再排队等待
-                settle(() => onFinish?.());
+                const bitmap = event.data.bitmap;
+                settle(() => {
+                    onFinish?.(bitmap);
+                });
+                // 与 onDraw 一致：回调执行后由本类回收；外部留存需自行复制
+                if (bitmap) {
+                    bitmap.close();
+                }
             } else if (event.data.action === "error") {
                 settle(() => onError?.(event.data.params));
             }

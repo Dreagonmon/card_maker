@@ -139,6 +139,15 @@ export class PanelGenerateCard extends HTMLElement {
         pre.scrollIntoView({ block: "end", inline: "nearest" });
     }
     displayImage(bitmap: ImageBitmap) {
+        // 显示画布后备尺寸取 deck 设置的分辨率（与离屏渲染一致），
+        // 避免默认 300x150 把画面压变形
+        const deck = globalDeck.getDeck();
+        const w = Math.round(deck.cardWidth * deck.sizeScale);
+        const h = Math.round(deck.cardHeight * deck.sizeScale);
+        if (this.#canvas.width !== w || this.#canvas.height !== h) {
+            this.#canvas.width = w;
+            this.#canvas.height = h;
+        }
         const ctx = this.#canvas.getContext("bitmaprenderer")!;
         ctx.transferFromImageBitmap(bitmap);
     }
@@ -166,7 +175,11 @@ export class PanelGenerateCard extends HTMLElement {
             (bitmap) => {
                 this.displayImage(bitmap);
             },
-            () => {
+            (bitmap) => {
+                if (bitmap) {
+                    // transferFromImageBitmap 会消费 bitmap；runner 随后 close 是空操作
+                    this.displayImage(bitmap);
+                }
                 this.appendOutputConsole("\n[运行结束]");
                 currentController.abort();
             },

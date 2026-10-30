@@ -32,9 +32,20 @@ globalThis.addEventListener("message", (event: MessageEvent<DrawWorkerInitReques
             if (m.action === "draw") {
                 dq.submitDrawCommand(m.params);
             } else if (m.action === "sync") {
-                dq.waitFinish().then(() => {
-                    const done: DrawPortMessage = { action: "syncDone" };
-                    port?.postMessage(done);
+                dq.waitFinish().then(async () => {
+                    // 画完后快照最终画面，随 syncDone transfer 回 wasm worker
+                    let bitmap: ImageBitmap | undefined;
+                    try {
+                        bitmap = await dq.snapshot();
+                    } catch {
+                        bitmap = undefined;
+                    }
+                    const done: DrawPortMessage = { action: "syncDone", params: bitmap };
+                    if (bitmap) {
+                        port?.postMessage(done, { transfer: [bitmap] });
+                    } else {
+                        port?.postMessage(done);
+                    }
                 });
             }
         });
