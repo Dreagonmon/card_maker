@@ -12,7 +12,8 @@
     "jsr:@std/net@^1.0.6": "1.0.6",
     "jsr:@std/path@^1.1.4": "1.1.6",
     "jsr:@std/streams@^1.0.17": "1.0.17",
-    "npm:@tegmentum/wasi-polyfill@~0.1.1": "0.1.1"
+    "npm:@tegmentum/wasi-polyfill@~0.1.1": "0.1.1",
+    "npm:fflate@~0.8.3": "0.8.3"
   },
   "jsr": {
     "@std/cli@1.0.27": {
@@ -66,11 +67,15 @@
   "npm": {
     "@tegmentum/wasi-polyfill@0.1.1": {
       "integrity": "sha512-z5cNDVje857oa0EnVbPNe+nqr6KGr0ThDutB+DrA6yv+hw6URNE6VHoISkOVNaIgX+IatJ4dSRnCCKFs5Kbw+A=="
+    },
+    "fflate@0.8.3": {
+      "integrity": "sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA=="
     }
   },
   "workspace": {
     "dependencies": [
-      "npm:@tegmentum/wasi-polyfill@~0.1.1"
+      "npm:@tegmentum/wasi-polyfill@~0.1.1",
+      "npm:fflate@~0.8.3"
     ]
   }
 }
