@@ -1,6 +1,8 @@
-import asset_fe_wasm from "./builtin/card_maker_plugin_fe.wasm.json" with { type: "json" };
+import card_maker_plugin_fe from "./builtin/card_maker_plugin_fe.wasm.json" with { type: "json" };
+import card_maker_plugin_wren from "./builtin/card_maker_plugin_wren.wasm.json" with { type: "json" };
 import demo_pelican from "./builtin/demo_pelican.fe.json" with { type: "json" };
-import main_fe from "./builtin/main.fe.json" with { type: "json" };
+import demo_wren from "./builtin/demo.wren.json" with { type: "json" };
+import departure_mono_font from "./builtin/departuremono_regular.woff2.json" with { type: "json" };
 import departure_mono_font_map from "./builtin/departure_mono_font_map.html.json" with { type: "json" };
 import { CARD_DECK_DATA_VERSION, CardDeck, DataRecordType, DeckData, Scope } from "./deck.ts";
 
@@ -66,7 +68,7 @@ export const EXAMPLE_DECK: CardDeck = {
     cardFaces: [
         {
             id: 20,
-            displayName: "示例卡面",
+            displayName: "示例卡面fe",
             executable: "card_maker_plugin_fe.wasm",
             entryFunction: "eval",
             data: {
@@ -75,6 +77,19 @@ export const EXAMPLE_DECK: CardDeck = {
                 "example_number": "999",
                 "example_multitext": "Hello\nWorld",
                 "example_enum": "value2",
+            },
+        },
+        {
+            id: 21,
+            displayName: "示例卡面wren",
+            executable: "card_maker_plugin_wren.wasm",
+            entryFunction: "eval",
+            data: {
+                "script_file": "demo.wren",
+                "example_boolean": "0",
+                "example_number": "888",
+                "example_multitext": "Hello\nWorld2",
+                "example_enum": "value3",
             },
         },
     ],
@@ -91,12 +106,26 @@ export const EXAMPLE_DECK: CardDeck = {
                 "example_enum": "value2",
             },
         },
+        {
+            id: 31,
+            frontFaceId: 21,
+            backFaceId: -1,
+            data: {
+                "example_boolean": "0",
+                "example_number": "111",
+                "example_text": "Text",
+                "example_multitext": "Hello Dragon",
+                "example_enum": "value1",
+            },
+        },
     ],
     assets: [
         demo_pelican,
-        main_fe,
+        demo_wren,
+        departure_mono_font,
         departure_mono_font_map,
-        asset_fe_wasm,
+        card_maker_plugin_fe,
+        card_maker_plugin_wren,
     ],
     name: "My Card Deck",
     note: "",
