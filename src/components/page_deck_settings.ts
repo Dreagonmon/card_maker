@@ -1,0 +1,205 @@
+import { globalDeck } from "../data/global_deck.ts";
+import { CardDeck } from "../data/deck.ts";
+import { dialogAlert } from "./dialog.ts";
+import "../font.css";
+
+type ScalarField = "name" | "note" | "cardWidth" | "cardHeight" | "sizeScale";
+
+interface FieldDef {
+    key: ScalarField;
+    label: string;
+    type: "text" | "number" | "textarea";
+    hint: string;
+    min?: number;
+    step?: number;
+}
+
+const FIELDS: FieldDef[] = [
+    { key: "name", label: "牌组名称", type: "text", hint: "显示用名称" },
+    { key: "note", label: "备注", type: "textarea", hint: "牌组的说明文字" },
+    { key: "cardWidth", label: "卡片宽度 (mm)", type: "number", hint: "生成画布的宽度", min: 1, step: 0.1 },
+    { key: "cardHeight", label: "卡片高度 (mm)", type: "number", hint: "生成画布的高度", min: 1, step: 0.1 },
+    { key: "sizeScale", label: "渲染缩放 (px/mm)", type: "number", hint: "每毫米渲染的像素数", min: 0.1, step: 0.1 },
+];
+
+export class PageDeckSettings extends HTMLElement {
+    static readonly TAG_NAME = "page-deck-settings";
+    #root: ShadowRoot;
+    #inputs = new Map<ScalarField, HTMLInputElement | HTMLTextAreaElement>();
+    #buttonSave: HTMLButtonElement;
+    #saveStatus: HTMLSpanElement;
+    #suppressSync = false;
+
+    constructor() {
+        super();
+        this.#root = this.attachShadow({ mode: "open" });
+
+        const rows = FIELDS.map((f) => {
+            const input =
+                f.type === "textarea"
+                    ? `<textarea id="f-${f.key}" rows="4" spellcheck="false"></textarea>`
+                    : `<input id="f-${f.key}" type="${f.type}"${
+                          f.min !== undefined ? ` min="${f.min}"` : ""
+                      }${f.step !== undefined ? ` step="${f.step}"` : ""}>`;
+            return /*html*/ `
+            <div class="field">
+                <label for="f-${f.key}">${f.label}</label>
+                <div class="control">
+                    ${input}
+                    <span class="hint">${f.hint}</span>
+                </div>
+            </div>`;
+        }).join("");
+
+        this.#root.innerHTML = /*html*/ `
+        <style>
+            :host {
+                display: block;
+                width: 100%;
+                height: 100%;
+                overflow-y: auto;
+            }
+            :host * {
+                box-sizing: border-box;
+            }
+            .page {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                padding: 0.5rem;
+            }
+            form {
+                width: 100%;
+                max-width: 36rem;
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            .field {
+                display: flex;
+                flex-direction: column;
+                gap: 0.25rem;
+            }
+            input,
+            textarea {
+                width: 100%;
+                resize: vertical;
+            }
+            .hint {
+                font-size: 0.75rem;
+                color: #888;
+            }
+            .footer {
+                display: flex;
+                align-items: center;
+                justify-content: flex-end;
+                gap: 0.5rem;
+            }
+        </style>
+        <div class="page">
+            <h1>牌组设置</h1>
+            <form novalidate>
+                ${rows}
+                <div class="footer">
+                    <span id="save-status"></span>
+                    <button id="save" type="button">保存</button>
+                </div>
+            </form>
+        </div>
+        `;
+
+        for (const f of FIELDS) {
+            const el = this.#root.querySelector(`#f-${f.key}`) as HTMLInputElement | HTMLTextAreaElement;
+            this.#inputs.set(f.key, el);
+        }
+
+        this.#buttonSave = this.#root.querySelector("#save") as HTMLButtonElement;
+        this.#saveStatus = this.#root.querySelector("#save-status") as HTMLSpanElement;
+        this.#buttonSave.addEventListener("click", () => this.#save());
+        // Ctrl/Cmd+S saves too
+        this.#root.addEventListener("keydown", (evt) => {
+            const ke = evt as KeyboardEvent;
+            if ((ke.ctrlKey || ke.metaKey) && ke.key === "s") {
+                evt.preventDefault();
+                this.#save();
+            }
+        });
+
+        // keep UI in sync when deck changes elsewhere (load/save/etc.)
+        const watched: string[] = ["all", ...FIELDS.map((f) => f.key)];
+        globalDeck.addEventListener("change", (event) => {
+            if (watched.includes(event.data.key as string)) {
+                this.#syncFromDeck();
+            }
+        });
+
+        this.#syncFromDeck();
+    }
+
+    #readDeck(): CardDeck {
+        return globalDeck.getDeck();
+    }
+
+    #syncFromDeck() {
+        if (this.#suppressSync) return;
+        const deck = this.#readDeck();
+        for (const f of FIELDS) {
+            const el = this.#inputs.get(f.key)!;
+            el.value = String(deck[f.key] ?? "");
+        }
+        this.#setStatus("");
+    }
+
+    #setStatus(text: string) {
+        this.#saveStatus.textContent = text;
+    }
+
+    #validNumber(f: FieldDef, text: string): boolean {
+        const v = Number(text);
+        if (text.trim() === "" || !Number.isFinite(v)) return false;
+        if (f.min !== undefined && v < f.min) return false;
+        return true;
+    }
+
+    #save() {
+        const deck = this.#readDeck();
+        const slot = deck as unknown as Record<ScalarField, string | number>;
+        // validate all first; any error -> popup and do not save
+        const errors: string[] = [];
+        for (const f of FIELDS) {
+            const el = this.#inputs.get(f.key)!;
+            if (f.type === "number" && !this.#validNumber(f, el.value)) {
+                errors.push(`「${f.label}」不是合法数值（最小 ${f.min}）：${el.value || "(空)"}`);
+            }
+        }
+        if (errors.length > 0) {
+            dialogAlert(`有非法数值，未保存：\n${errors.join("\n")}`);
+            return;
+        }
+        // commit changed fields
+        const changed: ScalarField[] = [];
+        for (const f of FIELDS) {
+            const el = this.#inputs.get(f.key)!;
+            const v = f.type === "number" ? Number(el.value) : el.value;
+            if (deck[f.key] !== v) {
+                slot[f.key] = v;
+                changed.push(f.key);
+            }
+        }
+        if (changed.length === 0) {
+            this.#setStatus("无改动");
+            return;
+        }
+        // notify persistence & other views; skip re-syncing our own inputs
+        this.#suppressSync = true;
+        for (const key of changed) {
+            globalDeck.notifyChange(key, "update");
+        }
+        this.#suppressSync = false;
+        this.#setStatus("已保存");
+    }
+}
+
+export const defineCustomElements = () => {
+    customElements.define(PageDeckSettings.TAG_NAME, PageDeckSettings);
+};

@@ -3,6 +3,7 @@ import { defineCustomElements as defineCustomElements1 } from "./components/tab_
 import { defineCustomElements as defineCustomElements2 } from "./components/table.ts";
 import { defineCustomElements as defineCustomElements3 } from "./components/dialog.ts";
 import { defineCustomElements as defineCustomElements4 } from "./components/page_generate_card.ts";
+import { defineCustomElements as defineCustomElements5 } from "./components/page_deck_settings.ts";
 import { initTable as initRecordItemTable } from "./components/table_record_item.ts";
 import { initTable as initAssetsTable } from "./components/table_assets.ts";
 import { initTable as initCardFaceTable } from "./components/table_card_face.ts";
@@ -11,6 +12,7 @@ defineCustomElements1();
 defineCustomElements2();
 defineCustomElements3();
 defineCustomElements4();
+defineCustomElements5();
 
 globalThis.addEventListener("load", () => {
     // init table

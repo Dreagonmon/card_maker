@@ -35,10 +35,8 @@
     </head>
     <body>
         <m-tabpane class="s-size-max">
-            <m-tab label="首页">
-                <div class="s-size-max s-flex-center s-flex-column">
-                    <h1>卡牌制作器</h1>
-                </div>
+            <m-tab label="首页" active>
+                <page-deck-settings />
             </m-tab>
             <m-tab label="数据项管理">
                 <m-table id="data_record_table"></m-table>
@@ -52,7 +50,7 @@
             <m-tab label="卡牌列表">
                 <m-table id="card_item_table" class="s-table"></m-table>
             </m-tab>
-            <m-tab label="制作卡牌" active>
+            <m-tab label="制作卡牌">
                 <page-generate-card />
             </m-tab>
         </m-tabpane>
