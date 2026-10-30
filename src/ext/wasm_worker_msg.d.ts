@@ -56,6 +56,14 @@ export interface DrawPortCommandMessage {
     action: "draw";
     params: string;
 }
+/** WASM worker 把变量改动同步给 Draw worker（与绘图指令同队列排队，保证顺序一致）。 */
+export interface DrawPortSetVarMessage {
+    action: "setVar";
+    params: {
+        name: string;
+        value: string;
+    };
+}
 /** WASM worker 请求等待已提交指令全部画完。 */
 export interface DrawPortSyncMessage {
     action: "sync";
@@ -66,4 +74,4 @@ export interface DrawPortSyncDoneMessage {
     /** 画完后的最终画面快照，经 transfer 传入；出错中止时可能缺省。 */
     params?: ImageBitmap;
 }
-export type DrawPortMessage = DrawPortCommandMessage | DrawPortSyncMessage | DrawPortSyncDoneMessage;
+export type DrawPortMessage = DrawPortCommandMessage | DrawPortSetVarMessage | DrawPortSyncMessage | DrawPortSyncDoneMessage;

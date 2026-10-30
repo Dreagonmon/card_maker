@@ -139,8 +139,11 @@ const wrapLine = (ctx: OffscreenCanvasRenderingContext2D, text: string, maxWidth
     return out;
 };
 
+/** 队列条目：绘图指令，或与指令同队列排队的变量设置（保证与指令顺序一致）。 */
+type QueueEntry = { cmd: string } | { setVar: { name: string; value: string } };
+
 export class DrawingQueue {
-    #cmd: Array<string> = [];
+    #cmd: Array<QueueEntry> = [];
     #d: CardDeck;
     #cv: OffscreenCanvas;
     #working: Promise<void> | undefined = undefined;
@@ -719,9 +722,14 @@ export class DrawingQueue {
         const run = (async () => {
             await Promise.resolve();
             while (this.#cmd.length > 0) {
-                const cmd = this.#cmd.shift()!;
+                const entry = this.#cmd.shift()!;
+                // 变量设置不改变画面：应用后直接取下一条（不产出 bitmap）。
+                if ("setVar" in entry) {
+                    this.#vars.set(entry.setVar.name, entry.setVar.value);
+                    continue;
+                }
                 try {
-                    await this._draw(cmd);
+                    await this._draw(entry.cmd);
                     // 注意：不能用 transferToImageBitmap()——它会清空画布，
                     // 使每条指令只交付"增量"，跨指令的累积效果（合成模式、
                     // 多行文本、clearrect 等）会丢失。createImageBitmap 保留画布内容。
@@ -737,11 +745,20 @@ export class DrawingQueue {
         })();
         this.#working = run.finally(() => {
             this.#working = undefined;
+            // run 循环发现队列空而退出后、#working 清空前，可能有新条目入队
+            // （_startTask 因 #working 未清空而直接 return）。这里复查并重启兜底。
+            if (this.#cmd.length > 0) this._startTask();
         });
     }
 
     submitDrawCommand(cmd: string) {
-        this.#cmd.push(cmd);
+        this.#cmd.push({ cmd });
+        this._startTask();
+    }
+
+    /** 与绘图指令同队列排队设置变量，确保变量改动与指令顺序一致。 */
+    submitSetVar(name: string, value: string) {
+        this.#cmd.push({ setVar: { name, value } });
         this._startTask();
     }
 

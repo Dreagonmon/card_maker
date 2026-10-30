@@ -3,6 +3,7 @@
 import { CardFace, CardItem, DeckData, Scope } from "./data/deck.ts";
 import type {
     DrawPortMessage,
+    DrawPortSetVarMessage,
     DrawPortSyncDoneMessage,
     DrawPortSyncMessage,
     WasmWorkerEventData,
@@ -87,6 +88,14 @@ const generateCardFace = async (
         if (data.name === "@draw") {
             // 异步投递绘图指令给 Draw worker，不阻塞 wasm 线程
             const msg: DrawPortMessage = { action: "draw", params: data.value.toString() };
+            drawPort.postMessage(msg);
+        } else {
+            // 其余变量改动也发给 Draw worker，与绘图指令同队列排队，
+            // 保证绘制时看到的变量值和 wasm 侧的改动顺序一致。
+            const msg: DrawPortSetVarMessage = {
+                action: "setVar",
+                params: { name: data.name, value: data.value.toString() },
+            };
             drawPort.postMessage(msg);
         }
     });

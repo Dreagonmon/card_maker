@@ -31,6 +31,9 @@ globalThis.addEventListener("message", (event: MessageEvent<DrawWorkerInitReques
             const m = ev.data;
             if (m.action === "draw") {
                 dq.submitDrawCommand(m.params);
+            } else if (m.action === "setVar") {
+                // 与绘图指令同队列排队，保证变量改动与指令顺序一致
+                dq.submitSetVar(m.params.name, m.params.value);
             } else if (m.action === "sync") {
                 dq.waitFinish().then(async () => {
                     // 画完后快照最终画面，随 syncDone transfer 回 wasm worker
