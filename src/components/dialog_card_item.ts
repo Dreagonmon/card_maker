@@ -11,11 +11,13 @@ const localCollator = new Intl.Collator(undefined, {
 const getCurrentDialogInput = (dialog: MDialog<CardItem>) => {
     const data: CardItem = {
         id: -1,
+        name: "",
         frontFaceId: -1,
         backFaceId: -1,
         data: {},
     };
     data.id = Number.parseInt((dialog.querySelector("#ci-id") as HTMLInputElement).value ?? "-1");
+    data.name = (dialog.querySelector("#ci-name") as HTMLInputElement).value ?? "";
     data.frontFaceId = Number.parseInt((dialog.querySelector("#ci-front-face-id") as HTMLInputElement).value ?? "-1");
     data.backFaceId = Number.parseInt((dialog.querySelector("#ci-back-face-id") as HTMLInputElement).value ?? "-1");
     // map fields
@@ -80,6 +82,10 @@ export const initDialog = (data: CardItem) => {
 <div class="${PFX}-field-dialog">
     <input id="ci-id" type="hidden" value="-1"/>
     <div class="${PFX}-field-item">
+        <label>卡牌名称</label>
+        <input id="ci-name" type="text"/>
+    </div>
+    <div class="${PFX}-field-item">
         <label>正面模版</label>
         <select id="ci-front-face-id">
             <option value="-1" selected>[无]</option>
@@ -109,6 +115,7 @@ export const initDialog = (data: CardItem) => {
 
     // init value fields
     (dialog.querySelector("#ci-id") as HTMLInputElement).value = data.id.toString();
+    (dialog.querySelector("#ci-name") as HTMLInputElement).value = data.name;
     const endElement = dialog.querySelector("#ci-field-end")!;
     // card face options
     const cardFaceIdNameMap = globalDeck.getCardFaceIdNameMap();

@@ -34,6 +34,7 @@ export interface CardFace extends Record<string, unknown> {
 
 export interface CardItem extends Record<string, unknown> {
     id: number;
+    name: string; // 卡牌名称（显示与导出命名用）
     frontFaceId: number;
     backFaceId: number;
     data: Record<string, string>;
@@ -234,6 +235,7 @@ export class DeckData extends EventTarget {
         const id = this.#deck.globalMaxId++;
         const row: CardItem = {
             id,
+            name: `card_${id}`,
             frontFaceId: 0,
             backFaceId: 0,
             data: {},

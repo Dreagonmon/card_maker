@@ -17,8 +17,8 @@ const TEMPLATE_CONFIG: TableConfig<CardItem> = {
     freezeFoot: true,
     columns: [
         {
-            displayName: "卡牌ID",
-            itemKey: "id",
+            displayName: "卡牌名称",
+            itemKey: "name",
         },
         {
             displayName: "操作",

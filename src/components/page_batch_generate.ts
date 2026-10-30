@@ -9,8 +9,9 @@ interface BatchTask {
     face: "front" | "back";
 }
 
-const sanitizeName = (name: string) => {
-    return name.replaceAll(/[\\/:*?"<>|]/g, "_").trim() || "deck";
+/** 文件名安全化：替换文件系统保留字符。 */
+const sanitizeFile = (name: string) => {
+    return name.replaceAll(/[\\/:*?"<>|]/g, "_").trim();
 };
 
 /** 并发数：按硬件情况，1~4。 */
@@ -122,7 +123,7 @@ export class PageBatchGenerate extends HTMLElement {
     /** 跑一张卡；finish/error/被终止 都会 resolve（至多一次）。 */
     #runOne(deckData: DeckData, task: BatchTask, results: Map<string, Blob>, onDone: () => void) {
         return new Promise<void>((resolve) => {
-            const key = `${task.card.id}-${task.face}`;
+            const key = `${sanitizeFile(task.card.name) || `card_${task.card.id}`}-${task.face}`;
             let settled = false;
             let runner: GenerateCardFaceRunner;
             const poll = setInterval(() => {
@@ -225,7 +226,7 @@ export class PageBatchGenerate extends HTMLElement {
         }
         this.#setStatus(`打包中…（成功 ${results.size}，失败 ${failed}）`);
         try {
-            const folder = sanitizeName(snapshot.name);
+            const folder = sanitizeFile(snapshot.name) || "deck";
             const files: Record<string, Uint8Array> = {};
             for (const [key, blob] of results) {
                 files[`${folder}/${key}.png`] = new Uint8Array(await blob.arrayBuffer());

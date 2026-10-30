@@ -108,7 +108,7 @@ export class PanelGenerateCard extends HTMLElement {
             for (const card of items) {
                 const idText = card.id.toString();
                 const option = select.appendChild(document.createElement("option"));
-                option.innerText = `卡牌${idText}`;
+                option.innerText = card.name || `卡牌${idText}`;
                 option.value = idText;
                 if (lastSelected === idText) {
                     option.selected = true;

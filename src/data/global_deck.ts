@@ -96,6 +96,7 @@ export const EXAMPLE_DECK: CardDeck = {
     cardItems: [
         {
             id: 30,
+            name: "示例卡牌",
             frontFaceId: 20,
             backFaceId: -1,
             data: {
@@ -108,6 +109,7 @@ export const EXAMPLE_DECK: CardDeck = {
         },
         {
             id: 31,
+            name: "示例卡牌2",
             frontFaceId: 21,
             backFaceId: -1,
             data: {
